@@ -147,6 +147,21 @@ Returns
 ```
 
 ---
+---
+
+## 🏗️ Design Decisions
+
+### 1. Next.js API Routes instead of Express
+
+I chose Next.js API Routes to keep the frontend and backend in a single codebase. This simplified development, reduced project complexity, and made deployment to Vercel seamless without maintaining a separate backend server.
+
+### 2. Cheerio for HTML Parsing
+
+Cheerio provides a lightweight, jQuery-like API for parsing HTML on the server. It allows efficient extraction of page titles, meta descriptions, headings, images, and other SEO-related information without requiring a browser environment.
+
+### 3. Separated Parsing Logic
+
+The HTML parsing logic was extracted into a dedicated `parser.ts` module instead of keeping it inside the API route. This separation of concerns makes the code easier to maintain, reuse, and test independently. It also enabled straightforward unit testing of the parsing logic without making network requests.
 
 ## 📊 Health Score
 
@@ -183,6 +198,24 @@ The API gracefully handles:
 - Unexpected server errors
 
 ---
+
+---
+
+## ✅ Testing
+
+The project includes automated unit tests for the HTML parsing logic using **Vitest**.
+
+Current test coverage includes:
+
+- ✅ Happy path parsing of a valid HTML document
+- ✅ Missing `<title>` tag
+- ✅ Missing meta description
+
+Run the tests with:
+
+```bash
+npm test
+```
 
 ## 🚀 Deployment
 
