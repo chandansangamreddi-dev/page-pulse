@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios, { AxiosError } from "axios";
-import * as cheerio from "cheerio";
+import { parseHtml } from "@/lib/parser";
 
 // Cheerio/HTML parsing needs the Node.js runtime (not Edge).
 export const runtime = "nodejs";
@@ -31,19 +31,15 @@ const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB safety cap
 function parseTargetUrl(value: string): URL | null {
   try {
     const parsed = new URL(value);
+
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       return null;
     }
+
     return parsed;
   } catch {
     return null;
   }
-}
-
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
 }
 
 export async function POST(request: NextRequest) {
@@ -83,7 +79,6 @@ export async function POST(request: NextRequest) {
       timeout: REQUEST_TIMEOUT_MS,
       maxRedirects: MAX_REDIRECTS,
       maxContentLength: MAX_RESPONSE_BYTES,
-      // We inspect the status ourselves instead of throwing on 4xx/5xx.
       validateStatus: () => true,
       responseType: "text",
       headers: {
@@ -96,6 +91,7 @@ export async function POST(request: NextRequest) {
     const responseTimeMs = Math.round(performance.now() - startTime);
 
     const contentType = String(response.headers["content-type"] ?? "");
+
     if (!contentType.includes("text/html")) {
       return NextResponse.json(
         {
@@ -107,38 +103,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const $ = cheerio.load(response.data);
-
-    const pageTitle = $("title").first().text().trim() || null;
-
-    const metaDescription =
-      $('meta[name="description"]').attr("content")?.trim() || null;
-
-    const h1Count = $("h1").length;
-
-    const images = $("img");
-    const totalImages = images.length;
-
-    let imagesMissingAlt = 0;
-    images.each((_, el) => {
-      const alt = $(el).attr("alt");
-      if (!alt || alt.trim() === "") {
-        imagesMissingAlt += 1;
-      }
-    });
-
-    const wordCount = countWords($("body").text());
+    const parsed = parseHtml(response.data);
 
     const result: AnalyzeResult = {
       url: targetUrl.toString(),
       httpStatus: response.status,
       responseTimeMs,
-      pageTitle,
-      metaDescription,
-      h1Count,
-      totalImages,
-      imagesMissingAlt,
-      wordCount,
+      ...parsed,
     };
 
     return NextResponse.json(result, { status: 200 });
@@ -148,7 +119,9 @@ export async function POST(request: NextRequest) {
 
       if (axiosError.code === "ECONNABORTED") {
         return NextResponse.json(
-          { error: `The request timed out after ${REQUEST_TIMEOUT_MS}ms.` },
+          {
+            error: `The request timed out after ${REQUEST_TIMEOUT_MS}ms.`,
+          },
           { status: 504 }
         );
       }
@@ -168,7 +141,9 @@ export async function POST(request: NextRequest) {
 
       if (axiosError.code === "ECONNREFUSED") {
         return NextResponse.json(
-          { error: "The connection was refused by the target server." },
+          {
+            error: "The connection was refused by the target server.",
+          },
           { status: 502 }
         );
       }
@@ -185,7 +160,9 @@ export async function POST(request: NextRequest) {
     console.error("Unexpected error in /api/analyze:", error);
 
     return NextResponse.json(
-      { error: "An unexpected error occurred while analyzing the page." },
+      {
+        error: "An unexpected error occurred while analyzing the page.",
+      },
       { status: 500 }
     );
   }
@@ -194,7 +171,9 @@ export async function POST(request: NextRequest) {
 // Any other method on this route is explicitly unsupported.
 export async function GET() {
   return NextResponse.json(
-    { error: "Method not allowed. Use POST with a JSON { url } body." },
+    {
+      error: "Method not allowed. Use POST with a JSON { url } body.",
+    },
     { status: 405 }
   );
 }
