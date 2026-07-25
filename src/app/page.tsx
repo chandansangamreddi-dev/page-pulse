@@ -1,13 +1,11 @@
 import Hero from "@/components/page-pulse/Hero";
-import UrlInputForm from "@/components/page-pulse/UrlInputForm";
-import ResultsGrid from "@/components/page-pulse/ResultsGrid";
+import Analyzer from "@/components/Analyzer";
 
 export default function Home() {
   return (
     <main className="min-h-screen">
       <Hero />
-      <UrlInputForm />
-      <ResultsGrid />
+      <Analyzer />
     </main>
   );
 }

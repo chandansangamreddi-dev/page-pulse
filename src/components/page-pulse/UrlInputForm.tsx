@@ -1,16 +1,66 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, ArrowRight } from "lucide-react";
+import { Globe, ArrowRight, Loader2 } from "lucide-react";
+import type { AnalyzeApiResponse } from "@/lib/metrics";
 
-export default function UrlInputForm() {
+interface UrlInputFormProps {
+  isLoading: boolean;
+  onAnalyzeStart: () => void;
+  onAnalyzeSuccess: (data: AnalyzeApiResponse) => void;
+  onAnalyzeError: (message: string) => void;
+}
+
+interface AnalyzeApiError {
+  error?: string;
+}
+
+export default function UrlInputForm({
+  isLoading,
+  onAnalyzeStart,
+  onAnalyzeSuccess,
+  onAnalyzeError,
+}: UrlInputFormProps) {
   const [url, setUrl] = useState("");
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    // Backend API will be connected later
-    console.log("Analyze:", url);
+    const trimmedUrl = url.trim();
+
+    if (!trimmedUrl || isLoading) return;
+
+    onAnalyzeStart();
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: trimmedUrl,
+        }),
+      });
+
+      const data: AnalyzeApiResponse | AnalyzeApiError =
+        await response.json();
+
+      if (!response.ok) {
+        onAnalyzeError(
+          "error" in data && data.error
+            ? data.error
+            : "Something went wrong while analyzing this page."
+        );
+        return;
+      }
+
+      onAnalyzeSuccess(data as AnalyzeApiResponse);
+    } catch {
+      onAnalyzeError(
+        "Couldn't reach the analysis service. Please try again."
+      );
+    }
   }
 
   return (
@@ -24,19 +74,31 @@ export default function UrlInputForm() {
         <input
           type="url"
           required
+          disabled={isLoading}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com"
-          className="w-full bg-transparent font-mono text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
+          aria-label="Website URL"
+          className="w-full bg-transparent font-mono text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none disabled:opacity-60"
         />
       </div>
 
       <button
         type="submit"
-        className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-black transition hover:brightness-110 active:scale-95"
+        disabled={isLoading}
+        className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-black transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        Analyze
-        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        {isLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Analyzing...
+          </>
+        ) : (
+          <>
+            Analyze
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </>
+        )}
       </button>
     </form>
   );
