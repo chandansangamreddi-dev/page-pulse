@@ -1,26 +1,109 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #08090b;
+  --color-bg-elevated: #0d0f12;
+  --color-pulse: #34d399;
+  --color-pulse-dim: #15764f;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -5%, rgba(52, 211, 153, 0.10), transparent),
+    linear-gradient(to bottom, #08090b, #0a0c0e 60%, #08090b);
+  min-height: 100vh;
+}
+
+::selection {
+  background-color: var(--color-pulse);
+  color: #08090b;
+}
+
+/* Thin scrollbar to match the dev-tool aesthetic */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  border: 2px solid var(--color-bg);
+}
+
+/* Signature element: animated ECG pulse line drawn across the hero */
+@keyframes draw-pulse {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  70%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.pulse-line-path {
+  stroke-dasharray: 1000;
+  animation: draw-pulse 2.4s ease-out forwards;
+}
+
+.pulse-dot {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Ambient floating background blobs */
+@keyframes blob-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4%, 6%) scale(1.08);
+  }
+}
+
+.animate-blob-drift {
+  animation: blob-drift 18s ease-in-out infinite;
+}
+
+/* Subtle entrance animation for hero / form / results */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob-drift,
+  .animate-fade-up,
+  .pulse-line-path,
+  .pulse-dot {
+    animation: none !important;
+  }
 }

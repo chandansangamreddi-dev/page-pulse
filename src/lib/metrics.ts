@@ -212,3 +212,90 @@ export function buildMetricsFromResult(data: AnalyzeApiResponse): Metric[] {
     },
   ];
 }
+
+/**
+ * --- Overall Health Score ---
+ * Derived entirely on the client from the existing /api/analyze response.
+ * No new backend calls or fields required.
+ */
+
+export type HealthGrade = "Excellent" | "Good" | "Needs Improvement" | "Poor";
+
+export interface HealthScoreBreakdownItem {
+  label: string;
+  points: number;
+  maxPoints: number;
+}
+
+export interface HealthScoreResult {
+  score: number; // 0–100
+  grade: HealthGrade;
+  breakdown: HealthScoreBreakdownItem[];
+}
+
+/**
+ * Weighting (sums to 100):
+ *  - HTTP Status        20
+ *  - Response Time      20
+ *  - Page Title         15
+ *  - Meta Description   15
+ *  - H1 Structure       15
+ *  - Image Alt Text     15
+ */
+export function computeHealthScore(data: AnalyzeApiResponse): HealthScoreResult {
+  const breakdown: HealthScoreBreakdownItem[] = [];
+
+  const httpStatusOk = data.httpStatus >= 200 && data.httpStatus < 300;
+  const httpStatusRedirect = data.httpStatus >= 300 && data.httpStatus < 400;
+  breakdown.push({
+    label: "HTTP Status",
+    points: httpStatusOk ? 20 : httpStatusRedirect ? 10 : 0,
+    maxPoints: 20,
+  });
+
+  breakdown.push({
+    label: "Response Time",
+    points:
+      data.responseTimeMs < 500 ? 20 : data.responseTimeMs < 1500 ? 12 : 5,
+    maxPoints: 20,
+  });
+
+  breakdown.push({
+    label: "Page Title",
+    points: data.pageTitle ? 15 : 0,
+    maxPoints: 15,
+  });
+
+  breakdown.push({
+    label: "Meta Description",
+    points: data.metaDescription ? 15 : 0,
+    maxPoints: 15,
+  });
+
+  breakdown.push({
+    label: "H1 Structure",
+    points: data.h1Count === 1 ? 15 : data.h1Count === 0 ? 0 : 8,
+    maxPoints: 15,
+  });
+
+  const missingAltRatio =
+    data.totalImages > 0 ? data.imagesMissingAlt / data.totalImages : 0;
+  breakdown.push({
+    label: "Image Alt Text",
+    points: Math.round(15 * (1 - missingAltRatio)),
+    maxPoints: 15,
+  });
+
+  const score = breakdown.reduce((sum, item) => sum + item.points, 0);
+
+  const grade: HealthGrade =
+    score >= 90
+      ? "Excellent"
+      : score >= 75
+        ? "Good"
+        : score >= 50
+          ? "Needs Improvement"
+          : "Poor";
+
+  return { score, grade, breakdown };
+}
